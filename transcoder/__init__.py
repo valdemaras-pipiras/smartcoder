@@ -135,7 +135,7 @@ class Transcoder():
 
                 # Video encoder settings
 
-                "container" : kwargs.get("container", "ts"),
+                "container" : kwargs.get("container", "mpeg"),
                 "video_bitrate" : kwargs.get("video_bitrate", "2000k"),
                 "x264_profile" : kwargs.get("x264_profile", "main"),
                 "x264_preset" : kwargs.get("x264_preset", "medium"),
@@ -253,13 +253,10 @@ class Transcoder():
         while self.free_threads:
             job = self.get_next_job()
             if not job:
-                logging.warning("No new job")
                 break
-
             thread = self.free_threads[0]
             logging.info("Assigning {} to {}".format(job, thread))
             thread.start_job(job)
-        logging.debug("No more free threads")
 
 
 
