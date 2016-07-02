@@ -1,49 +1,10 @@
-from __future__ import print_function
-
 import os
 import sys
 import thread
 
 from .common import *
-
-class Job():
-    def __init__(self, parent, source_path):
-        self.parent = parent
-        self.source_path = source_path
-        self.status = PENDING
-        self.last_size = 0
-        self.last_size_time = 0
-
-    @property
-    def file_size(self):
-        f = open(self.source_path)
-        f.seek(0, 2)
-        return f.tell()
-
-    @property
-    def is_growing(self):
-        file_size = self.file_size
-        if self.last_size == self.last_size_time == 0 or self.last_size != self.file_size:
-            self.last_size_time = time.time()
-            self.last_size = file_size
-            return True
-        elif time.time() - self.last_size_time > self.parent.settings["qtime"]:
-            logging.info("{} is not growing anymore".format(self.base_name))
-            return False
-        else:
-            return True # jsme v ochranne dobe, pocitame, ze furt roste
-
-    def __repr__(self):
-        return "job {}".format(self.base_name)
-
-    @property
-    def base_name(self):
-        return get_base_name(self.source_path)
-
-    @property
-    def target_path(self):
-        return os.path.join(self.parent.target_dir, "{}.{}".format(self.base_name, self.parent.settings["container"]))
-
+from .job import Job
+from .output_format import get_output_format
 
 
 class TranscoderThread():
@@ -80,11 +41,9 @@ class TranscoderThread():
         if os.path.exists(self.pipe_path):
             os.remove(self.pipe_path)
 
-
     def main(self):
-        meta = ffprobe(self.job.source_path)
-        duration = meta["format"].get("duration",0)
-        logging.debug("source duration is {}".format(duration))
+        output_format = get_output_format(self.job)
+        #TODO: error handling
 
         self.clean_pipe()
         os.mkfifo(self.pipe_path)
@@ -92,7 +51,7 @@ class TranscoderThread():
         proc = FFMPEG(
                 self.pipe_path,
                 self.job.target_path,
-                output_format=self.parent.output_format
+                output_format=output_format
                 )
         proc.start(stderr=None)
 
@@ -111,7 +70,6 @@ class TranscoderThread():
                 self.clean_pipe()
                 return
 
-
         self.job.status = FINISHED
         self.job = False
         fifo.close()
@@ -129,13 +87,14 @@ class Transcoder():
 
                 "frame_rate" : kwargs.get("frame_rate", 25),
                 "pixel_format" : kwargs.get("pixel_format", "yuv420p"),
-                "width" : kwargs.get("width", 1024),
+                "width" : kwargs.get("width", 720),
                 "height" : kwargs.get("height", 576),
                 "logo" : kwargs.get("logo", False),
 
                 # Video encoder settings
 
-                "container" : kwargs.get("container", "mpeg"),
+                "container" : kwargs.get("container", "3g2"),
+                "video_codec" : kwargs.get("video_codec", "libx264"),
                 "video_bitrate" : kwargs.get("video_bitrate", "2000k"),
                 "x264_profile" : kwargs.get("x264_profile", "main"),
                 "x264_preset" : kwargs.get("x264_preset", "medium"),
@@ -143,6 +102,7 @@ class Transcoder():
 
                 # Audio encoder settings
 
+                "audio_codec" : kwargs.get("audio_codec", "libfdk_aac"),
                 "audio_bitrate" : kwargs.get("audio_bitrate", "128k"),
                 "audio_sample_rate" : kwargs.get("audio_sample_rate", 48000),
 
@@ -151,49 +111,13 @@ class Transcoder():
                 "qtime" : int(kwargs.get("qtime", 10)),
                 "loop_delay" : int(kwargs.get("loop_delay", 5)),
                 "source_exts" : kwargs.get("source_exts", ["mxf"])
-                }
+            }
 
         self.jobs = []
         self.threads = []
         for i in range(self.thread_count):
             self.threads.append(TranscoderThread(self))
         self.work()
-
-
-    @property
-    def output_format(self):
-        filter_array = []
-        if self.settings.get("logo", False):
-            filter_array.append(
-                    "movie={}[watermark];[watermark]scale={}:{}[watermark]".format(
-                        self.settings["logo"],
-                        self.settings["width"],
-                        self.settings["height"]
-                        )
-                    )
-        filter_array.append("[in]null[out]")
-        if self.settings.get("expand_levels"):
-            filter_array.append("[out]colorlevels=rimin=0.0625:gimin=0.0625:bimin=0.0625:rimax=0.9375:gimax=0.9375:bimax=0.9375[out]")
-        filter_array.append("[out]scale={}:{}[out]".format(self.settings["width"], self.settings["height"]))
-        if self.settings.get("logo", False):
-            filter_array.append("[out][watermark]overlay=0:0[out]")
-        filters = ";".join(filter_array)
-        return [
-                ["filter:v", filters],
-                ["r", self.settings["frame_rate"]],
-                ["pix_fmt", self.settings["pixel_format"]],
-
-                ["c:v", "libx264"],
-                ["b:v", self.settings["video_bitrate"]],
-                ["profile:v" , self.settings["x264_profile"]],
-                ["level", self.settings["x264_level"]],
-                ["preset:v", self.settings["x264_preset"]],
-                ["video_track_timescale", self.settings["frame_rate"]],
-
-                ["c:a", "libfdk_aac"],
-                ["b:a", self.settings["audio_bitrate"]],
-                ["ar", self.settings["audio_sample_rate"]],
-            ]
 
 
     def work(self):
@@ -257,12 +181,3 @@ class Transcoder():
             thread = self.free_threads[0]
             logging.info("Assigning {} to {}".format(job, thread))
             thread.start_job(job)
-
-
-
-
-
-
-
-
-
