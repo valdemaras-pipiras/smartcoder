@@ -6,7 +6,8 @@ def get_settings(**kwargs):
             "pixel_format" : kwargs.get("pixel_format", "yuv420p"),
             "width" : kwargs.get("width", 720),
             "height" : kwargs.get("height", 576),
-            "logo" : kwargs.get("logo", False),
+            "logo_16_9" : kwargs.get("logo", False),
+            "logo_4_3" : kwargs.get("logo", False),
             "expand_levels" : kwargs.get("expand_levels", "auto"),
             "deinterlace" : kwargs.get("deinterlace", True),
 
