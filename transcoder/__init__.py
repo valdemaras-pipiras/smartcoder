@@ -49,6 +49,12 @@ class TranscoderThread():
         output_format = get_output_format(self.job)
         #TODO: error handling
 
+        #print (" ".join([str(item) for sublist in output_format for item in sublist]))
+        #print ("\n")
+        #self.job.status = FINISHED
+        #self.job = False
+        #return
+
         self.clean_pipe()
         os.mkfifo(self.pipe_path)
 

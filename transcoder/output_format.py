@@ -6,7 +6,7 @@ class AudioTrack():
         self.data = kwargs
 
     def __getitem__(self, key):
-        return self.data["key"]
+        return self.data[key]
 
     @property
     def id(self):
@@ -22,8 +22,7 @@ def guess_aspect (w, h):
 
 
 def probe(source_path):
-    logging.debug("Probing {}".format(get_base_name(friendly_name))
-    probe_result = ffprobe(self.input_path)
+    probe_result = ffprobe(source_path)
     meta = {
         "audio_tracks" : []
         }
@@ -39,8 +38,8 @@ def probe(source_path):
             # Aspect ratio detection
             try:
                 dar_n, dar_d = [float(e) for e in stream["display_aspect_ratio"].split(":")]
-            if not (dar_n and dar_d):
-                raise Exception
+                if not (dar_n and dar_d):
+                    raise Exception
             except:
                 dar_n, dar_d = float(stream["width"]), float(stream["height"])
 
@@ -59,7 +58,7 @@ def probe(source_path):
             meta["video_index"] = stream["index"]
 
         elif stream["codec_type"] == "audio":
-            meta[audio_tracks].append(AudioTrack(**stream))
+            meta["audio_tracks"].append(AudioTrack(**stream))
 
     meta["duration"] = float(format_info["duration"]) or source_vdur
     meta["num_frames"] = meta["duration"] * meta["frame_rate"]
@@ -73,11 +72,10 @@ def get_output_format(job):
     # ffprobe
     #
 
+    logging.debug("Probing {}".format(job.base_name))
     meta = probe(job.source_path)
 
     #TODO: error handling
-
-    #TODO: create audio mapping
 
     #TODO: read source TC
 
@@ -96,8 +94,8 @@ def get_output_format(job):
                     )
                 )
 
-        if settings["deinterlace"]:
-            #TODO: Deinterlace here
+    if settings["deinterlace"]:
+        #TODO: Deinterlace here
         filter_array.append("[in]null[out]")
     else:
         filter_array.append("[in]null[out]")
@@ -142,10 +140,47 @@ def get_output_format(job):
 
     #TODO: if container == m3u8, append hls params
 
-    result.extend([
-            ["c:a", "libfdk_aac"],
-            ["b:a", settings["audio_bitrate"]],
-            ["ar", settings["audio_sample_rate"]]
-        ])
+
+    atracks = meta["audio_tracks"]
+    audio_layout_map = ""
+    for stream in atracks:
+        audio_layout_map += stream["codec_type"].upper()[0]
+        if stream["codec_type"] == "audio":
+            audio_layout_map += str(stream["channels"])
+        audio_layout_map += " "
+    audio_layout_map = audio_layout_map.strip()
+
+    logging.debug("Audio layout map is: {}".format(audio_layout_map))
+    if atracks:
+        if atracks[0]["channels"] > 1:
+            # Take first two channels of the first track
+            result.extend([
+                    ["map", "0:{}".format(meta["video_index"])],
+                    ["map", "0:{}".format(atracks[0].id)],
+                    ["filter:a", "pan=stereo:c0=c0:c1=c1"]
+                ])
+
+        elif len(meta["audio_tracks"]) > 1:
+            # merge first two (mono) tracks
+            result.extend([
+                    ["filter:a", "[0:{}][0:{}]amerge=inputs=2[aout]".format(atracks[0].id, atracks[1].id)],
+                    ["map", "0:{}".format(meta["video_index"])],
+                    ["map", "[aout]"],
+                ])
+
+        else:
+            # ONLY one mono track present (asi). keep original layout layout
+            logging.warning("Unexpected audio layout {} in file {}".format(row, job.base_name ))
+
+        result.extend([
+                ["c:a", "libfdk_aac"],
+                ["b:a", settings["audio_bitrate"]],
+                ["ar", settings["audio_sample_rate"]]
+            ])
+
+    else:
+        result.append(["an"])
+
+
 
     return result
