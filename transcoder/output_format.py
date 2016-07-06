@@ -18,7 +18,7 @@ def guess_aspect (w, h):
         return 0
     valid_aspects = [(16, 9), (4, 3), (2.35, 1)]
     ratio = float(w) / float(h)
-    return "%s/%s" % min(valid_aspects, key=lambda x:abs((float(x[0])/x[1])-ratio))
+    return "{}:{}".format(*min(valid_aspects, key=lambda x:abs((float(x[0])/x[1])-ratio)))
 
 
 def probe(source_path):
@@ -79,24 +79,26 @@ def get_output_format(job):
 
     #TODO: read source TC
 
-
     #
     # filter chain
     #
 
     filter_array = []
     if settings["logo_4_3"] and settings["logo_16_9"]:
+        logo_path = {
+                "16:9" : settings["logo_16_9"],
+                "4:3" : settings["logo_4_3"]
+            }[meta.get("guess_aspect_ratio","16:9")]
         filter_array.append(
                 "movie={}[watermark];[watermark]scale={}:{}[watermark]".format(
-                    settings["logo"],
+                    logo_path,
                     settings["width"],
                     settings["height"]
                     )
                 )
 
     if settings["deinterlace"]:
-        #TODO: Deinterlace here
-        filter_array.append("[in]null[out]")
+        filter_array.append("[in]yadif=0:-1:0[out]")
     else:
         filter_array.append("[in]null[out]")
 
@@ -112,7 +114,6 @@ def get_output_format(job):
 
     filters = ";".join(filter_array)
 
-
     #
     # output format
     #
@@ -120,7 +121,8 @@ def get_output_format(job):
     result = [
             ["filter:v", filters],
             ["r", settings["frame_rate"]],
-            ["pix_fmt", settings["pixel_format"]]
+            ["pix_fmt", settings["pixel_format"]],
+            ["aspect", meta["guess_aspect_ratio"]]
         ]
 
     result.extend([
@@ -135,11 +137,6 @@ def get_output_format(job):
                 ["level", settings["x264_level"]],
                 ["preset:v", settings["x264_preset"]]
             ])
-
-    #TODO: if container == mpeg, append buf_size
-
-    #TODO: if container == m3u8, append hls params
-
 
     atracks = meta["audio_tracks"]
     audio_layout_map = ""
@@ -163,7 +160,7 @@ def get_output_format(job):
         elif len(meta["audio_tracks"]) > 1:
             # merge first two (mono) tracks
             result.extend([
-                    ["filter:a", "[0:{}][0:{}]amerge=inputs=2[aout]".format(atracks[0].id, atracks[1].id)],
+                    ["filter_complex", "[0:{}][0:{}]amerge=inputs=2[aout]".format(atracks[0].id, atracks[1].id)],
                     ["map", "0:{}".format(meta["video_index"])],
                     ["map", "[aout]"],
                 ])
@@ -177,10 +174,11 @@ def get_output_format(job):
                 ["b:a", settings["audio_bitrate"]],
                 ["ar", settings["audio_sample_rate"]]
             ])
-
     else:
+        # no audio track in source file
         result.append(["an"])
 
-
-
+    # clear original metadata
+    result.append(["movflags", "frag_keyframe+empty_moov"])
+    result.append(["map_metadata", "-1"])
     return result

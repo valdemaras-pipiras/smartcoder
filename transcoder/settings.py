@@ -13,7 +13,7 @@ def get_settings(**kwargs):
 
             # Video encoder settings
 
-            "container" : kwargs.get("container", "ts"),
+            "container" : kwargs.get("container", "mp4"),
             "video_codec" : kwargs.get("video_codec", "libx264"),
             "video_bitrate" : kwargs.get("video_bitrate", "1800k"),
             "x264_profile" : kwargs.get("x264_profile", "main"),
