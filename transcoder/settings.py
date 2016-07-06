@@ -2,12 +2,12 @@ def get_settings(**kwargs):
     return {
             # Frame settings
 
-            "frame_rate" : kwargs.get("frame_rate", 25),
+            "frame_rate" : int(kwargs.get("frame_rate", 25)),
             "pixel_format" : kwargs.get("pixel_format", "yuv420p"),
-            "width" : kwargs.get("width", 720),
-            "height" : kwargs.get("height", 576),
-            "logo_16_9" : kwargs.get("logo", False),
-            "logo_4_3" : kwargs.get("logo", False),
+            "width" : int(kwargs.get("width", 720)),
+            "height" : int(kwargs.get("height", 576)),
+            "logo_16_9" : kwargs.get("logo_16_9", False),
+            "logo_4_3" : kwargs.get("logo_4_3", False),
             "expand_levels" : kwargs.get("expand_levels", "auto"),
             "deinterlace" : kwargs.get("deinterlace", True),
 
