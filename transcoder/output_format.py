@@ -89,6 +89,7 @@ def get_output_format(job):
                 "16:9" : settings["logo_16_9"],
                 "4:3" : settings["logo_4_3"]
             }[meta.get("guess_aspect_ratio","16:9")]
+        logging.debug("Adding logo {}".format(logo_path))
         filter_array.append(
                 "movie={}[watermark];[watermark]scale={}:{}[watermark]".format(
                     logo_path,
@@ -107,7 +108,7 @@ def get_output_format(job):
         filter_array.append("[out]colorlevels=rimin=0.0625:gimin=0.0625:bimin=0.0625:rimax=0.9375:gimax=0.9375:bimax=0.9375[out]")
 
     filter_array.append("[out]scale={}:{}[out]".format(settings["width"], settings["height"]))
-    if settings.get("logo", False):
+    if settings["logo_4_3"] and settings["logo_16_9"]:
         filter_array.append("[out][watermark]overlay=0:0[out]")
 
     #TODO: timecode burn in
@@ -177,6 +178,9 @@ def get_output_format(job):
     else:
         # no audio track in source file
         result.append(["an"])
+
+
+
 
     # clear original metadata
     result.append(["movflags", "frag_keyframe+empty_moov"])
