@@ -1,69 +1,14 @@
+#
+# output_format.py
+#
+# function get_output_format(job)
+# Creates list of ffmpeg params (as list of tuples) for given job
+#
+
 from nxtools import *
+from .probe import *
 
-
-class AudioTrack():
-    def __init__(self, **kwargs):
-        self.data = kwargs
-
-    def __getitem__(self, key):
-        return self.data[key]
-
-    @property
-    def id(self):
-        return self["index"]
-
-
-def guess_aspect (w, h):
-    if 0 in [w, h]:
-        return 0
-    valid_aspects = [(16, 9), (4, 3), (2.35, 1)]
-    ratio = float(w) / float(h)
-    return "{}:{}".format(*min(valid_aspects, key=lambda x:abs((float(x[0])/x[1])-ratio)))
-
-
-def probe(source_path):
-    probe_result = ffprobe(source_path)
-    meta = {
-        "audio_tracks" : []
-        }
-
-    format_info = probe_result["format"]
-
-    for stream in probe_result["streams"]:
-        if stream["codec_type"] == "video":
-            # Frame rate detection
-            fps_n, fps_d = [float(e) for e in stream["r_frame_rate"].split("/")]
-            meta["frame_rate"] = fps_n / fps_d
-
-            # Aspect ratio detection
-            try:
-                dar_n, dar_d = [float(e) for e in stream["display_aspect_ratio"].split(":")]
-                if not (dar_n and dar_d):
-                    raise Exception
-            except:
-                dar_n, dar_d = float(stream["width"]), float(stream["height"])
-
-            meta["aspect_ratio"] = dar_n / dar_d
-            meta["guess_aspect_ratio"] = guess_aspect(dar_n, dar_d)
-
-            try:
-                source_vdur = float(stream["duration"])
-            except:
-                source_vdur = False
-
-            meta["video_codec"] = stream["codec_name"]
-            meta["pixel_format"] = stream["pix_fmt"]
-            meta["width"] = stream["width"]
-            meta["height"] = stream["height"]
-            meta["video_index"] = stream["index"]
-
-        elif stream["codec_type"] == "audio":
-            meta["audio_tracks"].append(AudioTrack(**stream))
-
-    meta["duration"] = float(format_info["duration"]) or source_vdur
-    meta["num_frames"] = meta["duration"] * meta["frame_rate"]
-    return meta
-
+__all__ = ["get_output_format"]
 
 def get_output_format(job):
     settings = job.parent.settings
@@ -74,10 +19,8 @@ def get_output_format(job):
 
     logging.debug("Probing {}".format(job.base_name))
     meta = probe(job.source_path)
-
-    #TODO: error handling
-
-    #TODO: read source TC
+    if not meta:
+        return False
 
     #
     # filter chain
@@ -111,7 +54,14 @@ def get_output_format(job):
     if settings["logo_4_3"] and settings["logo_16_9"]:
         filter_array.append("[out][watermark]overlay=0:0[out]")
 
-    #TODO: timecode burn in
+    #TODO: Move text props to settings
+    if settings["show_tc"]:
+        filter_array.append("[out]drawtext=fontfile=RobotoMono-Medium.ttf: timecode='{tc}': r={r}: \
+                x=(w-tw)/2: y=h-(2*lh): fontcolor=white: fontsize=24: box=1: boxborderw=8: boxcolor=0x00000000@1[out]".format(
+                    tc=meta["timecode"].replace(":","\:"),
+                    r=meta["frame_rate"]
+                    )
+                )
 
     filters = ";".join(filter_array)
 
@@ -178,9 +128,6 @@ def get_output_format(job):
     else:
         # no audio track in source file
         result.append(["an"])
-
-
-
 
     # clear original metadata
     result.append(["movflags", "frag_keyframe+empty_moov"])
