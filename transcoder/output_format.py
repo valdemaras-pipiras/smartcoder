@@ -55,11 +55,13 @@ def get_output_format(job):
         filter_array.append("[out][watermark]overlay=0:0[out]")
 
     #TODO: Move text props to settings
+    #TODO: vertical position based on frame height
     if settings["show_tc"]:
         filter_array.append("[out]drawtext=fontfile=RobotoMono-Medium.ttf: timecode='{tc}': r={r}: \
-                x=(w-tw)/2: y=h-(2*lh): fontcolor=white: fontsize=24: box=1: boxborderw=8: boxcolor=0x00000000@1[out]".format(
+                x=(w-tw)/2: y=h-(3*lh): fontcolor=white: fontsize={font_size}: box=1: boxborderw=8: boxcolor=0x00000000@1[out]".format(
                     tc=meta["timecode"].replace(":","\:"),
-                    r=meta["frame_rate"]
+                    r=meta["frame_rate"],
+                    font_size=settings["tc_size"]
                     )
                 )
 
@@ -82,6 +84,7 @@ def get_output_format(job):
             ["video_track_timescale", settings["frame_rate"]]
         ])
 
+    #TODO: Add gop size
     if settings["video_codec"] == "libx264":
         result.extend([
                 ["profile:v" , settings["x264_profile"]],
