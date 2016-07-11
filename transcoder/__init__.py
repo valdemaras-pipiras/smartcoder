@@ -91,12 +91,11 @@ class Transcoder():
     def __init__(self, **kwargs):
         self.source_dir = kwargs.get("source_dir", "input")
         self.target_dir = kwargs.get("target_dir", "output")
-        self.thread_count = kwargs.get("thread_count", 1)
         self.settings = get_settings(**kwargs)
 
         self.jobs = []
         self.threads = []
-        for i in range(self.thread_count):
+        for i in range(self.settings["threads"]):
             self.threads.append(TranscoderThread(self))
 
         thread.start_new_thread(self.watch, ())
