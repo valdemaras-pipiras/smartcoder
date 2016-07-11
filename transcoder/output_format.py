@@ -56,7 +56,7 @@ def get_output_format(job):
 
     #TODO: Move text props to settings
     #TODO: vertical position based on frame height
-    if settings["show_tc"]:
+    if settings["tc_show"]:
         filter_array.append("[out]drawtext=fontfile=RobotoMono-Medium.ttf: timecode='{tc}': r={r}: \
                 x=(w-tw)/2: y=h-(3*lh): fontcolor=white: fontsize={font_size}: box=1: boxborderw=8: boxcolor=0x00000000@1[out]".format(
                     tc=meta["timecode"].replace(":","\:"),
