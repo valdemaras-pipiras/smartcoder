@@ -24,7 +24,7 @@ def get_settings(**kwargs):
 
             "tc_show" : kwargs.get("tc_show", True),
             "tc_font" : kwargs.get("tc_font", "support/RobotoMono-Medium.ttf"),
-            "tc_size" : kwargs.get("tc_size", 24),
+            "tc_size" : kwargs.get("tc_size", 18),
 
             # Video encoder settings
 
@@ -48,3 +48,4 @@ def get_settings(**kwargs):
             "loop_delay" : int(kwargs.get("loop_delay", 5)),
             "source_exts" : kwargs.get("source_exts", ["mxf"])
         }
+

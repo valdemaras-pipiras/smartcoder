@@ -54,14 +54,19 @@ def get_output_format(job):
     if settings["logo_4_3"] and settings["logo_16_9"]:
         filter_array.append("[out][watermark]overlay=0:0[out]")
 
-    #TODO: Move text props to settings
-    #TODO: vertical position based on frame height
     if settings["tc_show"]:
-        filter_array.append("[out]drawtext=fontfile=RobotoMono-Medium.ttf: timecode='{tc}': r={r}: \
-                x=(w-tw)/2: y=h-(3*lh): fontcolor=white: fontsize={font_size}: box=1: boxborderw=8: boxcolor=0x00000000@1[out]".format(
+        #x = (w-tw)/2: y=h-(3*lh)
+        x="(w*0.1)"
+        y="h-(h*0.05)-lh"
+
+        filter_array.append("[out]drawtext=fontfile={font}: timecode='{tc}': r={r}: \
+                x={x}: y={y}: fontcolor=white: fontsize={font_size}: box=1: boxborderw=8: boxcolor=0x00000000@1[out]".format(
                     tc=meta["timecode"].replace(":","\:"),
                     r=meta["frame_rate"],
-                    font_size=settings["tc_size"]
+                    font=settings["tc_font"],
+                    font_size=settings["tc_size"],
+                    x=x,
+                    y=y
                     )
                 )
 
