@@ -1,6 +1,8 @@
 import os
 import sys
 import thread
+import time
+import subprocess
 
 from .common import *
 from .job import Job
@@ -46,7 +48,9 @@ class TranscoderThread():
         thread.start_new_thread(self.main, ())
 
     def main(self):
-        output_format = get_output_format(self.job)
+        logging.info("{} is encoding {}".format(self, self.job))
+        start_time = time.time()
+        output_format, meta = get_output_format(self.job)
         if not output_format:
             self.job.status = FAILED
             self.job = False
@@ -60,7 +64,7 @@ class TranscoderThread():
                 self.job.target_path,
                 output_format=output_format
                 )
-        proc.start(stderr=None)
+        proc.start(stderr=subprocess.PIPE)
 
         source = open(self.job.source_path)
         fifo = open(self.pipe_path, "w")
@@ -76,6 +80,11 @@ class TranscoderThread():
                 fifo.close()
                 self.clean_pipe()
                 return
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        speed = meta["duration"] / elapsed_time
+        logging.goodnews("Encoding {} finished on {} in {:.02f}s ({:.02f}x real time)".format(self.job, self, elapsed_time, speed))
 
         self.job.status = FINISHED
         self.job = False
@@ -111,7 +120,7 @@ class Transcoder():
                 if self.job_exists(source_path):
                     continue
                 #TODO: skip if target path exists
-                logging.debug("Found new file {}".format(os.path.basename(source_path)))
+    #            logging.debug("Found new file {}".format(os.path.basename(source_path)))
                 self.jobs.append(Job(self, source_path))
                 new_job_count += 1
 

@@ -20,7 +20,7 @@ def get_output_format(job):
     logging.debug("Probing {}".format(job.base_name))
     meta = probe(job.source_path)
     if not meta:
-        return False
+        return False, False
 
     #
     # filter chain
@@ -77,6 +77,7 @@ def get_output_format(job):
     #
 
     result = [
+            ["threads", 4], #TODO
             ["filter:v", filters],
             ["r", settings["frame_rate"]],
             ["pix_fmt", settings["pixel_format"]],
@@ -140,4 +141,4 @@ def get_output_format(job):
     # clear original metadata
     result.append(["movflags", "frag_keyframe+empty_moov"])
     result.append(["map_metadata", "-1"])
-    return result
+    return result, meta
