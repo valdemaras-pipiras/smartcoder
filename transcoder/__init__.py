@@ -119,8 +119,8 @@ class Transcoder():
             for source_path in get_files(self.source_dir, exts=self.settings["source_exts"]):
                 if self.job_exists(source_path):
                     continue
-                #TODO: skip if target path exists
-    #            logging.debug("Found new file {}".format(os.path.basename(source_path)))
+                if self.has_target(source_path):
+                    continue
                 self.jobs.append(Job(self, source_path))
                 new_job_count += 1
 
@@ -156,6 +156,7 @@ class Transcoder():
                 return True
         return False
 
+
     def get_free_thread(self):
         for thread in self.threads:
             if thread.is_busy:
@@ -163,8 +164,18 @@ class Transcoder():
             return thread
         return False
 
+
     def get_next_job(self):
         for job in self.jobs:
             if job.status == PENDING:
                 return job
+        return False
+
+
+    def has_target(self, source_path):
+        base_name =  get_base_name(source_path)
+        for ext in ["mp4", "txt"]:
+            f =  os.path.join(self.target_dir, "{}.{}".format(base_name, ext))
+            if os.path.exists(f):
+                return True
         return False
