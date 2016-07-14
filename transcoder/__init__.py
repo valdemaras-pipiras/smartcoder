@@ -10,15 +10,15 @@ from .output_format import get_output_format
 from .settings import get_settings
 
 
-class TranscoderThread():
+class TranscoderWorker():
     def __init__(self, parent):
         self.parent = parent
-        self.id = len(self.parent.threads)
+        self.id = len(self.parent.workers)
         logging.info("Starting {}".format(self))
         self.job = False
 
     def __repr__(self):
-        return "transcoder thread {}".format(self.id)
+        return "transcoder worker {}".format(self.id)
 
     def __del__(self):
         self.clean_pipe()
@@ -59,37 +59,90 @@ class TranscoderThread():
         self.clean_pipe()
         os.mkfifo(self.pipe_path)
 
+        log_path = os.path.splitext(self.job.target_path)[0] + ".log"
+        log_file = open(log_path, "w")
+
         proc = FFMPEG(
                 self.pipe_path,
                 self.job.target_path,
                 output_format=output_format
                 )
-        proc.start(stderr=subprocess.PIPE)
+        proc.start(stderr=log_file)#stderr=subprocess.PIPE)
 
         source = open(self.job.source_path)
         fifo = open(self.pipe_path, "w")
 
-        while self.job.is_growing:
-            try:
-                fifo.write(source.read())
+
+        buff_size = 1024 * 1024 * 16
+        nt = 0
+        at = 0
+        while True:
+            fs = self.job.file_size
+            growing = self.job.is_growing
+
+            if (not growing) and at == fs:
+                time.sleep(3)
+                if self.job.file_size > at:
+                    logging.info("quarantine change")
+                    continue
+                break
+
+            if fs - at < buff_size and growing:
+                print("buffer underrun: {} {}".format(fs, at))
                 time.sleep(.1)
-            except:
-                log_traceback()
-                self.job.status = FAILED
-                self.job = False
-                fifo.close()
-                self.clean_pipe()
-                return
+                continue
+
+            buff = source.read(buff_size)
+            fifo.write(buff)
+            at += len(buff)
+
+            progress = (float(at)/fs)*100
+            if time.time() - nt > 5:
+                nt = time.time()
+                logging.debug("{} is at byte {} of {} ({:.02f}%)".format(self, at, fs, progress ))
+
+
+
+            #try:
+            #    fifo.write(source.read())
+            #    time.sleep(.1)
+            #except:
+            #    log_traceback()
+            #    self.job.status = FAILED
+            #    self.job = False
+            #    fifo.close()
+                #    self.clean_pipe()
+            #    return
+
+        logging.debug("Size difference: {}".format(self.job.file_size - at))
+        logging.debug("Closing {}".format(self.pipe_path))
+        log_file.write("------------ TERMINATE ------------\n")
+        fifo.close()
+        self.clean_pipe()
+        t = time.time()
+        while proc.is_running:
+            logging.debug("Size difference: {}".format(self.job.file_size - at))
+            logging.debug(" {} is waiting for ffmpeg termination ({})".format(self, self.job))
+            time.sleep(1)
+            if time.time() - t > 10:
+                logging.warning("{} forcing ffmpeg stop".format(self))
+                proc.stop()
+        log_file.close()
+
 
         end_time = time.time()
         elapsed_time = end_time - start_time
         speed = meta["duration"] / elapsed_time
-        logging.goodnews("Encoding {} finished on {} in {:.02f}s ({:.02f}x real time)".format(self.job, self, elapsed_time, speed))
+        logging.goodnews(
+            "Encoding {} finished on {} in {:.02f}s ({:.02f}x real time)".format(
+                self.job,
+                self,
+                elapsed_time,
+                speed
+            ))
 
         self.job.status = FINISHED
         self.job = False
-        fifo.close()
-        self.clean_pipe()
 
 
 
@@ -100,9 +153,9 @@ class Transcoder():
         self.settings = get_settings(**kwargs)
 
         self.jobs = []
-        self.threads = []
-        for i in range(self.settings["threads"]):
-            self.threads.append(TranscoderThread(self))
+        self.workers = []
+        for i in range(self.settings["workers"]):
+            self.workers.append(TranscoderWorker(self))
 
         thread.start_new_thread(self.watch, ())
         self.broker()
@@ -135,16 +188,16 @@ class Transcoder():
         while True:
             time.sleep(.5)
 
-            thread = self.get_free_thread()
-            if not thread:
+            worker = self.get_free_worker()
+            if not worker:
                 continue
 
             job = self.get_next_job()
             if not job:
                 continue
 
-            logging.info("Assigning {} to {}".format(job, thread))
-            thread.start_job(job)
+            logging.info("Assigning {} to {}".format(job, worker))
+            worker.start_job(job)
 
     #
     # Helpers
@@ -157,11 +210,11 @@ class Transcoder():
         return False
 
 
-    def get_free_thread(self):
-        for thread in self.threads:
-            if thread.is_busy:
+    def get_free_worker(self):
+        for worker in self.workers:
+            if worker.is_busy:
                 continue
-            return thread
+            return worker
         return False
 
 
