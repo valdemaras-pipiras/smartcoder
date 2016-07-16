@@ -16,6 +16,7 @@ class TranscoderWorker():
         self.id = len(self.parent.workers)
         logging.info("Starting {}".format(self))
         self.job = False
+        self.last_handle_time = 0
 
     def __repr__(self):
         return "transcoder worker {}".format(self.id)
@@ -47,20 +48,32 @@ class TranscoderWorker():
             return
         thread.start_new_thread(self.main, ())
 
-    def main(self):
-        logging.info("{} is encoding {}".format(self, self.job))
-        start_time = time.time()
-        output_format, meta = get_output_format(self.job)
-        if not output_format:
-            self.job.status = FAILED
-            self.job = False
-            return
+
+    def encode_simple(self, output_format, meta):
+        logging.info("{} is finalized file (duration: {})".format(self.job, s2tc(meta["duration"])))
+
+        def phandle(position):
+            if time.time() - self.last_handle_time < 5:
+                return
+            position = position / 25.0 #FIXME: get from meta
+            progress = (position / meta["duration"]) * 100
+            logging.debug("{} encoding {} is at {} ({:.02f}%)".format(self, self.job, s2tc(position),  progress) )
+            self.last_handle_time = time.time()
+
+        return ffmpeg(
+                self.job.source_path,
+                self.job.target_path,
+                output_format=output_format,
+                progress_handler=phandle
+            )
+
+
+    def encode_growing(self, output_format, meta):
+        log_path = os.path.splitext(self.job.target_path)[0] + ".log"
+        log_file = open(log_path, "w")
 
         self.clean_pipe()
         os.mkfifo(self.pipe_path)
-
-        log_path = os.path.splitext(self.job.target_path)[0] + ".log"
-        log_file = open(log_path, "w")
 
         proc = FFMPEG(
                 self.pipe_path,
@@ -71,7 +84,6 @@ class TranscoderWorker():
 
         source = open(self.job.source_path)
         fifo = open(self.pipe_path, "w")
-
 
         buff_size = 1024 * 1024 * 16
         nt = 0
@@ -101,19 +113,6 @@ class TranscoderWorker():
                 nt = time.time()
                 logging.debug("{} is at byte {} of {} ({:.02f}%)".format(self, at, fs, progress ))
 
-
-
-            #try:
-            #    fifo.write(source.read())
-            #    time.sleep(.1)
-            #except:
-            #    log_traceback()
-            #    self.job.status = FAILED
-            #    self.job = False
-            #    fifo.close()
-                #    self.clean_pipe()
-            #    return
-
         logging.debug("Size difference: {}".format(self.job.file_size - at))
         logging.debug("Closing {}".format(self.pipe_path))
         log_file.write("------------ TERMINATE ------------\n")
@@ -130,18 +129,55 @@ class TranscoderWorker():
         log_file.close()
 
 
+
+
+    def main(self):
+        if not os.path.exists(self.job.source_path):
+            self.job.status = FAILED
+            self.job = False
+            return
+
+        start_time = time.time()
+        logging.info("{} is encoding {}".format(self, self.job))
+        is_growing = self.job.is_growing
+
+        output_format, meta = get_output_format(self.job)
+        if not output_format:
+            self.job.status = FAILED
+            self.job = False
+            return
+
+        time.sleep(self.parent.settings["qtime"])
+
+        if self.job.is_growing:
+            logging.info("{} is growing file".format(self.job))
+            result = self.encode_growing(output_format, meta)
+        else:
+            logging.info("{} is has source".format(self.job))
+            result = self.encode_simple(output_format, meta)
+
         end_time = time.time()
         elapsed_time = end_time - start_time
-        speed = meta["duration"] / elapsed_time
-        logging.goodnews(
-            "Encoding {} finished on {} in {:.02f}s ({:.02f}x real time)".format(
-                self.job,
-                self,
-                elapsed_time,
-                speed
-            ))
 
-        self.job.status = FINISHED
+        if result:
+            speed = meta["duration"] / elapsed_time
+            logging.goodnews(
+                "Encoding {} finished on {} in {:.02f}s ({:.02f}x real time)".format(
+                    self.job,
+                    self,
+                    elapsed_time,
+                    speed
+                ))
+
+            self.job.status = FINISHED
+        else:
+            logging.error(
+                "Encoding {} failed after {:02f}s".format(
+                    self.job,
+                    self.elapsed_time
+                ))
+            self.job.status = FAILED
+
         self.job = False
 
 

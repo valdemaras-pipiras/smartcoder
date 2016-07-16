@@ -23,7 +23,6 @@ class Job():
             self.last_size = file_size
             return True
         elif time.time() - self.last_size_time > self.parent.settings["qtime"]:
-            logging.info("{} is not growing anymore".format(self.base_name))
             return False
         else:
             return True # jsme v ochranne dobe, pocitame, ze furt roste

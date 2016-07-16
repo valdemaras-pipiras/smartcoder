@@ -44,7 +44,8 @@ def get_settings(**kwargs):
 
             # Daemon settings
 
-            "threads" : int(kwargs.get("threads", 1)),
+            "workers" : int(kwargs.get("workers", 1)),
+            "threads_per_worker" : kwargs.get("threads_per_worker", "auto"),
             "qtime" : int(kwargs.get("qtime", 10)),
             "loop_delay" : int(kwargs.get("loop_delay", 5)),
             "source_exts" : kwargs.get("source_exts", ["mxf"])

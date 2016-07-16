@@ -77,7 +77,7 @@ def get_output_format(job):
     #
 
     result = [
-            ["threads", 4], #TODO
+            ["threads", settings["threads_per_worker"]],
             ["filter:v", filters],
             ["r", settings["frame_rate"]],
             ["pix_fmt", settings["pixel_format"]],
