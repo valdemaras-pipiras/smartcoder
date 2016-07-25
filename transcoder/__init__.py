@@ -127,6 +127,7 @@ class TranscoderWorker():
                 logging.warning("{} forcing ffmpeg stop".format(self))
                 proc.stop()
         log_file.close()
+        return True
 
 
 
@@ -149,12 +150,15 @@ class TranscoderWorker():
 
         time.sleep(self.parent.settings["qtime"])
 
-        if self.job.is_growing:
-            logging.info("{} is growing file".format(self.job))
-            result = self.encode_growing(output_format, meta)
-        else:
-            logging.info("{} is has source".format(self.job))
-            result = self.encode_simple(output_format, meta)
+        try:
+            if self.job.is_growing:
+                logging.info("{} is growing file".format(self.job))
+                result = self.encode_growing(output_format, meta)
+            else:
+                logging.info("{} is has source".format(self.job))
+                result = self.encode_simple(output_format, meta)
+        except:
+            result = False
 
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -174,7 +178,7 @@ class TranscoderWorker():
             logging.error(
                 "Encoding {} failed after {:02f}s".format(
                     self.job,
-                    self.elapsed_time
+                    elapsed_time
                 ))
             self.job.status = FAILED
 
@@ -214,6 +218,8 @@ class Transcoder():
                 new_job_count += 1
 
             if new_job_count:
+                if new_job_count == 1:
+                    logging.info("Last created job: {}", source_path)
                 logging.info("Created {} new jobs".format(new_job_count))
 
             time.sleep(self.settings["loop_delay"])

@@ -76,6 +76,9 @@ def probe(source_path):
         elif stream["codec_type"] == "audio":
             meta["audio_tracks"].append(AudioTrack(**stream))
 
+    if meta["timecode"] == "00:00:00:00" and format_info.get("timecode", "00:00:00:00") != "00:00:00:00":
+        meta["timecode"] = format_info["timecode"]
+
     meta["duration"] = float(format_info["duration"]) or source_vdur
     meta["num_frames"] = meta["duration"] * meta["frame_rate"]
     return meta
