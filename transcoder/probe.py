@@ -68,17 +68,26 @@ def probe(source_path):
             meta["width"] = stream["width"]
             meta["height"] = stream["height"]
             meta["video_index"] = stream["index"]
-            if "timecode" in stream:
-                meta["timecode"] = stream["timecode"]
-            else:
-                meta["timecode"] = "00:00:00:00"
 
         elif stream["codec_type"] == "audio":
             meta["audio_tracks"].append(AudioTrack(**stream))
 
-    if meta["timecode"] == "00:00:00:00" and format_info.get("timecode", "00:00:00:00") != "00:00:00:00":
-        meta["timecode"] = format_info["timecode"]
 
     meta["duration"] = float(format_info["duration"]) or source_vdur
     meta["num_frames"] = meta["duration"] * meta["frame_rate"]
+
+    # Read source TC
+
+    tc_places = [
+            probe_result["format"].get("tags", {}).get("timecode", "00:00:00:00"),
+            probe_result["format"].get("timecode", "00:00:00:00"),
+            probe_result["streams"][meta["video_index"]].get("timecode", "00:00:00:00")
+        ]
+    tc = "00:00:00:00"
+    for i, tcp in enumerate(tc_places):
+        if tcp != "00:00:00:00":
+            tc = tcp
+            break
+    meta["timecode"] = tc
+
     return meta

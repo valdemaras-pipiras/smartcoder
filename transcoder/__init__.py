@@ -3,6 +3,7 @@ import sys
 import thread
 import time
 import subprocess
+import json
 
 from .common import *
 from .job import Job
@@ -41,11 +42,11 @@ class TranscoderWorker():
         self.job.status = WORKING
         if not self.job:
             return
-        elif os.path.exists(self.job.target_path):
-            logging.debug("Target path for {} already exists. Aborting.".format(self.job.base_name))
-            self.job.status = ABORTED
-            self.job = False
-            return
+#        elif os.path.exists(self.job.target_path):
+#            logging.debug("Target path for {} already exists. Aborting.".format(self.job.base_name))
+#            self.job.status = ABORTED
+#            self.job = False
+#            return
         thread.start_new_thread(self.main, ())
 
 
@@ -162,6 +163,19 @@ class TranscoderWorker():
 
         end_time = time.time()
         elapsed_time = end_time - start_time
+        if "re-encode" in self.job.manifest.data.keys():
+            del(self.job.manifest["re-encode"])
+            del(self.job.manifest["reason"])
+            self.job.manifest.save()
+
+        if meta["timecode"] != "00:00:00:00":
+            self.job.manifest["timecode"] = meta["timecode"]
+            self.job.manifest.save()
+
+            tc_path = os.path.splitext(self.job.target_path)[0] + ".xml"
+            with open(tc_path, "w") as f:
+                f.write("<IN>{}</IN>".format(meta["timecode"]))
+
 
         if result:
             speed = meta["duration"] / elapsed_time
@@ -191,7 +205,6 @@ class Transcoder():
         self.source_dir = kwargs.get("source_dir", "input")
         self.target_dir = kwargs.get("target_dir", "output")
         self.settings = get_settings(**kwargs)
-
         self.jobs = []
         self.workers = []
         for i in range(self.settings["workers"]):
@@ -219,7 +232,7 @@ class Transcoder():
 
             if new_job_count:
                 if new_job_count == 1:
-                    logging.info("Last created job: {}", source_path)
+                    logging.info("Last created job: {}".format(source_path))
                 logging.info("Created {} new jobs".format(new_job_count))
 
             time.sleep(self.settings["loop_delay"])
@@ -269,8 +282,22 @@ class Transcoder():
 
     def has_target(self, source_path):
         base_name =  get_base_name(source_path)
-        for ext in ["mp4", "txt"]:
-            f =  os.path.join(self.target_dir, "{}.{}".format(base_name, ext))
-            if os.path.exists(f):
-                return True
-        return False
+        if self.settings["is_fixing"]:
+
+            manifest_name = os.path.join(self.target_dir, "data", "{}.{}".format(base_name, "json"))
+            try:
+                manifest = json.load(open(manifest_name))
+            except:
+                pass
+            else:
+                if manifest.get("re-encode", False):
+                    logging.info("Restarting job {} ({})".format(base_name, manifest.get("reason", "no reason")))
+                    return False
+            return True
+
+        else:
+            for ext in ["mp4", "txt"]:
+                f =  os.path.join(self.target_dir, "{}.{}".format(base_name, ext))
+                if os.path.exists(f):
+                    return True
+            return False

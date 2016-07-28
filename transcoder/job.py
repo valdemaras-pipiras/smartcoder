@@ -1,5 +1,35 @@
 import os
+import json
 from .common import *
+
+class Manifest():
+    def __init__(self, manifest_path):
+        logging.debug("Opening manifest {}".format(manifest_path))
+        self.manifest_path = manifest_path
+        try:
+            self.data = json.load(open(self.manifest_path))
+        except:
+            self.data = {}
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __delitem__(self, key):
+        del(self.data[key])
+
+    def save(self):
+        f = open(self.manifest_path, "w")
+        f.write(json.dumps(self.data))
+        f.close()
+        if not self.data:
+            try:
+                os.remove(self.manifest_path)
+            except:
+                return
+
 
 class Job():
     def __init__(self, parent, source_path):
@@ -8,6 +38,13 @@ class Job():
         self.status = PENDING
         self.last_size = 0
         self.last_size_time = 0
+        self._manifest = None
+
+    @property
+    def manifest(self):
+        if not self._manifest:
+            self._manifest = Manifest(self.manifest_path)
+        return self._manifest
 
     @property
     def file_size(self):
@@ -37,3 +74,7 @@ class Job():
     @property
     def target_path(self):
         return os.path.join(self.parent.target_dir, "{}.{}".format(self.base_name, self.parent.settings["container"]))
+
+    @property
+    def manifest_path(self):
+        return os.path.join(self.parent.target_dir, "{}.{}".format(self.base_name, "data", "json"))
