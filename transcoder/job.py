@@ -2,6 +2,7 @@ import os
 import json
 from .common import *
 
+
 class Manifest():
     def __init__(self, manifest_path):
         logging.debug("Opening manifest {}".format(manifest_path))
@@ -39,6 +40,8 @@ class Job():
         self.last_size = 0
         self.last_size_time = 0
         self._manifest = None
+        self.fails = 0
+        self.last_fail = 0
 
     @property
     def manifest(self):
@@ -77,4 +80,4 @@ class Job():
 
     @property
     def manifest_path(self):
-        return os.path.join(self.parent.target_dir, "{}.{}".format(self.base_name, "data", "json"))
+        return os.path.join(self.parent.target_dir, "data", "{}.{}".format(self.base_name, "json"))

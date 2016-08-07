@@ -11,7 +11,6 @@ if __name__ == "__main__":
 
     parser = OptionParser()
     parser.add_option("-f", "--fix", action="store_true", dest="is_fixing", help="Fix only")
-    parser.add_option("-w", "--workers", action="append", default=4, type="int", dest="workers", help="Workers count")
 
     options, args = parser.parse_args()
     option_dict = vars(options)
