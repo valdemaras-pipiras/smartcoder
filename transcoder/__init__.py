@@ -20,8 +20,28 @@ class Transcoder():
         for i in range(self.settings["workers"]):
             self.workers.append(TranscoderWorker(self))
 
+        self.clean_incomplete()
+
         thread.start_new_thread(self.watch, ())
         self.broker()
+
+
+    def clean_incomplete(self):
+        #TODO: workers count may vary - list all current_* files instead of current workers
+        for worker in self.workers:
+            try:
+                current = open("current_{}".format(worker.id)).read()
+            except:
+                current = None
+
+            if current != "None":
+                current_path = os.path.join(self.target_dir, "{}.mp4".format(current))
+                try:
+                    os.remove(current_path)
+                except:
+                    log_traceback("Unable to remove {}".format(current_path))
+                else:
+                    logging.info("Removed incomplete proxy {}".format(current_path))
 
     #
     # Main loops
@@ -48,7 +68,7 @@ class Transcoder():
 
             if new_job_count:
                 if new_job_count == 1:
-                    logging.info("Last created job: {}".format(source_path))
+                    logging.debug("Last created job: {}".format(source_path))
                 logging.info("Created {} new jobs".format(new_job_count))
 
             time.sleep(self.settings["loop_delay"])
@@ -94,9 +114,11 @@ class Transcoder():
             if job.status == PENDING:
                 return job
             elif job.status == FAILED and job.fails < 5 and time.time() - job.last_fail > 60:
+                logging.debug("Restarting previously failed job {} (fast)".format(job))
                 return job
             elif job.status == FAILED and time.time() - job.last_fail > 3600:
                 # jednou za hodinu se pokusime projet zfailovany joby
+                logging.debug("Restarting previously failed job {}".format(job))
                 return job
         return False
 
@@ -117,8 +139,7 @@ class Transcoder():
             return True
 
         else:
-            for ext in ["mp4", "txt", "json"]:
-                f =  os.path.join(self.target_dir, "{}.{}".format(base_name, ext))
-                if os.path.exists(f):
-                    return True
+            f =  os.path.join(self.target_dir, "{}.mp4".format(base_name))
+            if os.path.exists(f):
+                return True
             return False
