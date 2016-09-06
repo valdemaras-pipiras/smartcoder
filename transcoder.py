@@ -6,7 +6,6 @@ from transcoder import *
 from optparse import OptionParser
 
 if __name__ == "__main__":
-
     settings = json.load(open("settings.json"))
 
     parser = OptionParser()

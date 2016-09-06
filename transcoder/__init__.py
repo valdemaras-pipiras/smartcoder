@@ -20,7 +20,10 @@ class Transcoder():
         for i in range(self.settings["workers"]):
             self.workers.append(TranscoderWorker(self))
 
-        self.clean_incomplete()
+        if not self.settings["is_fixing"]:
+            self.clean_incomplete()
+        else:
+            logging.info("Transcoder started in FIXING mode")
 
         thread.start_new_thread(self.watch, ())
         self.broker()
@@ -48,29 +51,30 @@ class Transcoder():
     #
 
     def watch(self):
-        """watchfolder thread"""
         logging.info("Watching folder {}".format(self.source_dir))
         while True:
-            new_job_count = 0
-            for source_path in get_files(self.source_dir, exts=self.settings["source_exts"]):
+            try:
+                new_job_count = 0
+                for source_path in get_files(self.source_dir, exts=self.settings["source_exts"]):
 
-                if not (os.path.exists(source_path) and os.path.getsize(source_path)):
-                    continue # Na soubory s nulovou delkou sere pes
+                    if not (os.path.exists(source_path) and os.path.getsize(source_path)):
+                        continue # Na soubory s nulovou delkou sere pes
 
-                if self.job_exists(source_path):
-                    continue
+                    if self.job_exists(source_path):
+                        continue
 
-                if self.has_target(source_path):
-                    continue
+                    if self.has_target(source_path):
+                        continue
 
-                self.jobs.append(Job(self, source_path))
-                new_job_count += 1
+                    self.jobs.append(Job(self, source_path))
+                    new_job_count += 1
 
-            if new_job_count:
-                if new_job_count == 1:
-                    logging.debug("Last created job: {}".format(source_path))
-                logging.info("Created {} new jobs".format(new_job_count))
-
+                if new_job_count:
+                    if new_job_count == 1:
+                        logging.debug("Last created job: {}".format(source_path))
+                    logging.info("Created {} new jobs".format(new_job_count))
+            except:
+                log_traceback()
             time.sleep(self.settings["loop_delay"])
 
 
@@ -78,17 +82,19 @@ class Transcoder():
         logging.info("Starting jobs broker")
         while True:
             time.sleep(.5)
+            try:
+                worker = self.get_free_worker()
+                if not worker:
+                    continue
 
-            worker = self.get_free_worker()
-            if not worker:
-                continue
+                job = self.get_next_job()
+                if not job:
+                    continue
 
-            job = self.get_next_job()
-            if not job:
-                continue
-
-            logging.info("Assigning {} to {}".format(job, worker))
-            worker.start_job(job)
+                logging.info("Assigning {} to {}".format(job, worker))
+                worker.start_job(job)
+            except:
+                log_traceback()
 
     #
     # Helpers
