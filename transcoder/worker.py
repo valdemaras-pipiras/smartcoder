@@ -73,13 +73,15 @@ class TranscoderWorker():
             f.write(self.job.base_name)
 
         try:
-            if self.job.is_growing:
-                logging.info("{} is growing file".format(self.job))
+            #if self.job.is_growing:
+            if not self.parent.settings["is_fixing"]:
+                logging.debug("{} is growing file".format(self.job))
                 result = self.encode_growing(output_format, meta)
             else:
-                logging.info("{} is has source".format(self.job))
+                logging.debug("Fixing {}".format(self.job))
                 result = self.encode_simple(output_format, meta)
         except:
+            log_traceback()
             result = False
 
         end_time = time.time()
@@ -156,7 +158,7 @@ class TranscoderWorker():
                 self.job.target_path,
                 output_format=output_format
                 )
-        proc.start(stderr=log_file)#stderr=subprocess.PIPE)
+        proc.start(stderr=log_file)
 
         source = open(self.job.source_path)
         fifo = open(self.pipe_path, "w")
@@ -176,7 +178,6 @@ class TranscoderWorker():
                 break
 
             if fs - at < buff_size and growing:
-        #        logging.debug("{} buffer underrun (no big deal - waiting): {} {}".format(self, fs, at))
                 time.sleep(1)
                 continue
 
@@ -204,5 +205,3 @@ class TranscoderWorker():
                 proc.stop()
         log_file.close()
         return True
-
-
