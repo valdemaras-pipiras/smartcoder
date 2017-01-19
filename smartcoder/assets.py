@@ -74,6 +74,9 @@ class Asset(object):
             return meta_format[key](self[key])
         return self[key]
 
+    def has_job(self, id_action):
+        return id_action in self.report.get("created_jobs", [])
+
 
 def asset_by_path(id_storage, path, db=False):
     db = db or DB()
