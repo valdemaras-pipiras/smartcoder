@@ -40,11 +40,12 @@ CREATE TABLE public.nodes(
 CREATE TABLE public.jobs(
         id_asset INTEGER REFERENCES public.assets(id),
         id_action INTEGER REFERENCES public.actions(id),
-        id_node INTEGER REFERENCES public.nodes(id),
-        id_worker INTEGER NOT NULL,
+        id_node INTEGER,
+        id_worker INTEGER,
         status INTEGER DEFAULT 0,
-        progress INTEGER DEFAULT 0,
-        message TEXT,
+        progress FLOAT DEFAULT 0,
+        message TEXT NOT NULL DEFAULT 'Pending',
+        creation_time INTEGER DEFAULT 0,
         start_time INTEGER DEFAULT 0,
         end_time INTEGER DEFAULT 0,
         PRIMARY KEY (id_asset, id_action)
