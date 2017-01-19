@@ -1,0 +1,22 @@
+$roboto-font-path: '/static/fonts';
+$FontPath: '/static/fonts/roboto-slab';
+
+@import "vendor/roboto/roboto/sass/roboto-fontface.scss";
+@import "vendor/roboto-slab/roboto_slab.scss";
+
+@import "mdi.scss";                  // Material design icons
+@import "theme.scss";                // Color scheme (bootstrap _variables)
+@import "vendor/_bootstrap.scss";    // Bootstrap main
+
+#content{
+    padding-top: 60px;
+}
+
+.navbar-brand {
+    font-family: "Roboto Slab";
+    padding-top: 10px;
+}
+
+table {
+    white-space: nowrap;
+}

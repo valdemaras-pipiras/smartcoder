@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>{% if user %}{{ user.login }}@{% endif %}smartcoder</title>
+
+    <!--[if IE]><meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'><![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <meta name="description" content="SmartCoder Admin">
+    <meta name="author" content="imm studios, z.s.">
+
+    {% include "includes/icons.html" %}
+
+    {% for stylesheet in site.css %}<link rel="stylesheet" type="text/css" href="{{ stylesheet }}"/>
+    {% endfor %}
+    {% for stylesheet in page.css %}<link rel="stylesheet" type="text/css" href="{{ stylesheet }}"/>
+    {% endfor %}
+</head>
+
+<body id="{{ view }}">
+    {% if user %}{% include "includes/navbar.html" %}{% endif %}
+
+    <div id="content">
+        {% block content %}
+        {% endblock %}
+    </div> <!-- #content -->
+
+    {% if site.js %}<!-- Site javascripts -->{% for script in site.js %}
+    <script src="{{ script }}"></script>{% endfor %}{% endif %}
+    {% if page.js %}<!-- Page javascripts -->{% for script in page.js %}
+    <script src="{{ script }}"></script>{% endfor %}{% endif %}
+</body>
+</html>

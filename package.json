@@ -1,0 +1,37 @@
+{
+  "name": "smartcoder",
+  "version": "2.0.0",
+  "description": "SmartInformatics proxy encoder\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[C Informatics proxy ecoder",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/martastain/smartcoder.git"
+  },
+  "keywords": [
+    "encoder",
+    "proxy",
+    "video",
+    "admin"
+  ],
+  "author": "Martin Wacker",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/martastain/smartcoder/issues"
+  },
+  "homepage": "https://github.com/martastain/smartcoder#readme",
+  "dependencies": {
+    "bootstrap-sass": "^3.3.7",
+    "gulp": "^3.9.1",
+    "gulp-clean-css": "^2.3.2",
+    "gulp-concat": "^2.6.1",
+    "gulp-minify": "0.0.14",
+    "gulp-sass": "^3.0.0",
+    "jquery": "^3.1.1",
+    "mdi": "^1.7.22",
+    "roboto-fontface": "^0.6.0",
+    "roboto-slab-fontface-kit": "^1.0.1"
+  }
+}
