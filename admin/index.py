@@ -8,6 +8,8 @@ class ViewIndex(CherryAdminView):
         self["columns"] = [
                 ["id", "#"],
                 ["base_name", "Title"],
+                ["timecode", "Start TC"],
+                ["duration", "Duration"],
                 ["guess_aspect_ratio", "Aspect"],
                 ["mtime", "Modified"],
                 ["status", "Status"],
