@@ -6,11 +6,10 @@ from nxtools import *
 from .common import *
 from .db import *
 
-__all__ = ["Action"]
+__all__ = ["Action", "actions"]
 
 class Action():
     def __init__(self, id, title, settings, **kwargs):
-        self.db = kwargs.get("db", DB())
         self.id = id
         self.title = title
         self.settings = xml(settings)
@@ -57,3 +56,5 @@ class Action():
             return False
         return eval(self.start_if)
 
+
+actions = {}
