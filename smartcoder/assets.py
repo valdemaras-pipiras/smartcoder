@@ -15,7 +15,7 @@ __all__ = ["Asset", "asset_by_path", "get_assets"]
 class Asset(object):
     def __init__(self, id=False, **kwargs):
         self.kwargs = kwargs
-        self.db = kwargs.get("db", DB())
+        self._db = kwargs.get("db", False)
         self.id = id
         self.id_storage = 0
         self.path = ""
@@ -27,6 +27,12 @@ class Asset(object):
 
         if id:
             self.load(id)
+
+    @property
+    def db(self):
+        if not self._db:
+            self._db = DB()
+        return self._db
 
     def load(self, id):
         self.db.query("SELECT id_storage, path, fsize, ctime, mtime, meta, report FROM assets WHERE id = %s", [id])
@@ -88,8 +94,22 @@ def asset_by_path(id_storage, path, db=False):
 
 def get_assets(**kwargs):
     db = kwargs.get("db", DB())
-    db.query("SELECT id, id_storage, path, fsize, ctime, mtime, meta, report FROM assets ORDER BY id DESC")
+    order = kwargs.get("order", False)
+    conds = kwargs.get("conds", [])
+    count = kwargs.get("count", False)
+    query = "SELECT id, id_storage, path, fsize, ctime, mtime, meta, report"
+    if count:
+        query += ", COUNT(id) OVER() AS full_count"
+    else:
+        query += ", 0"
+
+    query += " FROM assets"
+    if conds:
+        query += " WHERE " + " AND ".join(conds)
+    if order:
+        query += " ORDER BY " + order
+    db.query(query)
     for row in db.fetchall():
         asset = Asset(db=db)
-        asset.id, asset.id_storage, asset.path, asset.fsize, asset.ctime, asset.mtime, asset.meta, asset.report = row
+        asset.id, asset.id_storage, asset.path, asset.fsize, asset.ctime, asset.mtime, asset.meta, asset.report, asset.count = row
         yield asset
