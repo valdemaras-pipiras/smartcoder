@@ -1,3 +1,17 @@
+CREATE TABLE public.users(
+        id SERIAL PRIMARY KEY,
+        login VARCHAR(64) NOT NULL,
+        password VARCHAR(128) NOT NULL,
+        is_admin BOOLEAN DEFAULT false
+    );
+
+CREATE TABLE public.nodes(
+        id SERIAL PRIMARY KEY,
+        hostname VARCHAR(64) NOT NULL,
+        workers_count INTEGER DEFAULT 0,
+        workers_status JSONB
+    );
+
 CREATE TABLE public.storages(
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) UNIQUE,
@@ -12,6 +26,12 @@ CREATE TABLE public.watchfolders(
         UNIQUE(id_storage, path)
     );
 
+CREATE TABLE public.actions(
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) UNIQUE,
+        settings XML NOT NULL
+    );
+
 CREATE TABLE public.assets(
         id SERIAL PRIMARY KEY,
         id_storage INTEGER REFERENCES public.storages(id),
@@ -24,18 +44,9 @@ CREATE TABLE public.assets(
         UNIQUE (id_storage, path)
     );
 
-CREATE TABLE public.actions(
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(255) UNIQUE,
-        settings XML NOT NULL
-    );
-
-CREATE TABLE public.nodes(
-        id SERIAL PRIMARY KEY,
-        hostname VARCHAR(64) NOT NULL,
-        workers_count INTEGER DEFAULT 0,
-        workers_status JSONB
-    );
+CREATE INDEX idx_storage ON assets(id_storage);
+CREATE INDEX idx_path ON assets(path);
+CREATE INDEX idx_mtime ON assets(mtime);
 
 CREATE TABLE public.jobs(
         id_asset INTEGER REFERENCES public.assets(id),
@@ -51,9 +62,8 @@ CREATE TABLE public.jobs(
         PRIMARY KEY (id_asset, id_action)
     );
 
-CREATE TABLE public.users(
-        id SERIAL PRIMARY KEY,
-        login VARCHAR(64) NOT NULL,
-        password VARCHAR(128) NOT NULL,
-        is_admin BOOLEAN DEFAULT false
-    );
+CREATE INDEX idx_job_asset ON jobs(id_asset);
+CREATE INDEX idx_job_action ON jobs(id_action);
+CREATE INDEX idx_job_status ON jobs(status);
+CREATE INDEX idx_job_ctime ON jobs(ctime);
+
