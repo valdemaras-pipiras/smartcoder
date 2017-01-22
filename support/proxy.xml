@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+
+    <allow_if>True</allow_if>
+    <create_if>True</create_if>
+    <start_if><![CDATA[asset.mtime < time.time() - 200]]></start_if>
+
+    <!-- pre is python script to be executed before transcoding -->
+    <pre><![CDATA[
+
+tc_font = "support/RobotoMono-Medium.ttf"
+tc_size = 18
+
+temp_path = get_path(1, "smartcoder/proxy/.creating/{}.{}.mp4".format(asset.original_base_name, get_guid()))
+final_path = get_path(1, "smartcoder/proxy/{}.mp4".format(asset.original_base_name))
+
+logo_path = {
+        "16:9" : "support/logo_169.png",
+        "4:3" : "support/logo_43.png"
+    }[asset.meta.get("guess_aspect_ratio","16:9")]
+
+filter_array = []
+filter_array.append("movie={}[watermark];[watermark]scale=720:576{}[watermark]".format(logo_path))
+filter_array.append("[in]yadif=0:-1:0[out]")
+filter_array.append("[out]scale=720:576[out]"
+filter_array.append("[out][watermark]overlay=0:0[out]")
+
+x="(w*0.1)"
+y="h-(h*0.05)-lh"
+
+filter_array.append("[out]drawtext=fontfile={font}: timecode='{tc}': r={r}: \
+    x={x}: y={y}: fontcolor=white: fontsize={font_size}: box=1: boxborderw=8: boxcolor=0x00000000@1[out]".format(
+        tc=asset["timecode"].replace(":","\:"),
+        r=asset["frame_rate"],
+        font=tc_font,
+        font_size=tc_size,
+        x=x,
+        y=y
+        )
+    )
+
+filters = ";".join(filter_array)
+
+atracks = asset["audio_tracks"]
+
+if not atracks:
+    audio_mode = 0
+elif atracks[0]['channels'] > 1:
+    audio_mode = 1
+elif len(atracks) > 1:
+    audio_mode = 2
+
+]]></pre>
+
+
+
+    <task mode="ffmpeg">
+        <!-- frame format -->
+
+        <param name="filter:v">filters</param>
+        <param name="s">"720x576"</param>
+        <param name="r">25</param>
+        <param name="pix_fmt">"yuv420p"</param>
+        <param name="aspect">asset["guess_aspect_ratio"]</param>
+
+        <!-- video encoding -->
+
+        <param name="c:v">"libx264"</param>
+        <param name="b:v">"1800k"</param>
+        <param name="profile:v">"main"</param>
+        <param name="preset:v">"medium"</param>
+        <param name="level">"4.0"</param>
+
+        <!-- gop size -->
+
+        <param name="g">50</param>
+        <param name="x264opts">"keyint=50:min-keyint=50:no-scenecut"</param>
+
+        <!-- audio settings -->
+
+        <paramset cond="audio_mode > 0">
+            <param name="c:a">"libfdk_aac"</param>
+            <param name="b:a">"128k"</param>
+            <param name="ar">48000</param>
+        </paramset>
+
+        <paramset cond="audio_mode == 1">
+            <param name="map">"0:{}".format(asset["video_index"])</param>
+            <param name="map">"0:{}".format(atracks[0]["index"])</param>
+            <param name="filter:a">"pan=stereo:c0=c0:c1=c1"</param>
+        </paramset>
+
+        <paramset cond="audio_mode == 2">
+            <param name="filter_complex">"[0:{}][0:{}]amerge=inputs=2[aout]".format(atracks[0]["index"], atracks[1]["index"])</param>
+            <param name="map">"0:{}".format(meta["video_index"])</param>
+            <param name="map">"[aout]"</param>
+        </paramset>
+
+        <!-- container settings -->
+
+        <param name="video_track_timescale">"25"</param>
+
+    </task>
+
+
+
+    <success><![CDATA[
+os.rename(temp_path, final_path)
+]]></success>
+
+
+    <fail><![CDATA[
+if os.path.exists(temp_path):
+    os.remove(temp_path)
+]]></fail>
+
+
+</settings>
