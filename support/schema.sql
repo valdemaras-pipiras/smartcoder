@@ -9,7 +9,8 @@ CREATE TABLE public.nodes(
         id SERIAL PRIMARY KEY,
         hostname VARCHAR(64) NOT NULL,
         workers_count INTEGER DEFAULT 0,
-        workers_status JSONB
+        workers_status JSONB,
+        UNIQUE (hostname)
     );
 
 CREATE TABLE public.storages(
@@ -65,5 +66,5 @@ CREATE TABLE public.jobs(
 CREATE INDEX idx_job_asset ON jobs(id_asset);
 CREATE INDEX idx_job_action ON jobs(id_action);
 CREATE INDEX idx_job_status ON jobs(status);
-CREATE INDEX idx_job_ctime ON jobs(ctime);
+CREATE INDEX idx_job_ctime ON jobs(creation_time);
 
