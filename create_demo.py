@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import socket
+
 
 # [title, mountpoint]
 
@@ -24,7 +26,7 @@ ACTIONS = [
 
 # [hostname, worker_count]
 NODES = [
-        ["banana", 3]
+        [socket.gethostname(), 1]
     ]
 
 # [login, password (plain), is_admin]
