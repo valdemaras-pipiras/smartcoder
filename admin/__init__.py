@@ -1,12 +1,23 @@
 from nxtools import *
 from cherryadmin import CherryAdmin
 
+from smartcoder import *
+
 from .index import ViewIndex
+from .jobs import ViewJobs
 
 __all__ = ["CherryAdmin", "admin_config", "admin_site_context"]
 
 def login_helper(login, password):
-    return {"login" : "admin"}
+    db = DB()
+    db.query("SELECT id, is_admin FROM users WHERE login=%s AND password=%s", [login, hash_password(password)])
+    for id, is_admin in db.fetchall():
+        return {
+                "id" : id,
+                "login" : login,
+                "is_admin" : is_admin
+            }
+    return False
 
 admin_site_context = {
 	"name" : "smartcoder",
@@ -49,6 +60,7 @@ admin_config = {
         "blocking" : True,
         "views" : {
                 "index" : ViewIndex,
+                "jobs" : ViewJobs,
             },
         "api_methods" : {
 
