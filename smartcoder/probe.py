@@ -78,7 +78,6 @@ def probe(source_path, progress_handler=False):
     meta["num_frames"] = meta["duration"] * meta["frame_rate"]
 
     tc = find_start_timecode(probe_result)
-    if tc != "00:00:00:00":
-        meta["timecode"] = tc
+    meta["timecode"] = tc
     return meta
 

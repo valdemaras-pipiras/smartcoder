@@ -26,8 +26,10 @@ class SCWatchFolder(WatchFolder):
             logging.debug("{} is too young. Skipping".format(base_name))
 
         asset = asset_by_path(id_storage, asset_path, db=db)
+        is_new = False
 
         if not asset:
+            is_new = True
             asset = Asset(db=db)
             asset.id_storage = id_storage
             asset.path = asset_path
@@ -45,8 +47,15 @@ class SCWatchFolder(WatchFolder):
             logging.info("Updating asset {}".format(asset.id))
             asset.ctime = ctime
             asset.mtime = mtime
+            asset.report["created_jobs"] = []
             asset.probe()
             asset.save()
+
+            if not is_new:
+                db.query("UPDATE jobs SET status = %s WHERE id_asset = %s", [RESTART_REQUIRED, asset.id])
+                db.commit()
+
+
 
 
 class FileMonitor(object):
@@ -80,7 +89,6 @@ class FileMonitor(object):
         while True:
             self.last_seen = time.time()
             for watchfolder in self.watchfolders:
-                logging.debug("scanning", watchfolder.input_dir)
                 watchfolder.watch()
 
             if time.time() - last_clean_up > 1800:

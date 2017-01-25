@@ -10,6 +10,7 @@ FINISHED = 2
 ABORTED = 3
 FAILED = 4
 RESTART_REQUIRED = 5
+ABORT_REQUIRED = 6
 
 
 logging.user = "smartcoder"
@@ -23,10 +24,6 @@ config = {
     }
 
 storages = {}
-watchfolders = {}
-profiles = {}
-nodes = {}
-
 
 def hash_password(password):
     return hashlib.sha512(password + config["password_salt"]).hexdigest()
